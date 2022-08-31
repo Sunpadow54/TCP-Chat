@@ -1,28 +1,45 @@
 const readLine = require('readline')
 const net = require('net')
+const util = require('util')
 
 const DEFAULT_PORT = 8080
-const color = {
-    red : '\x1b[31m%s\x1b[0m',
-    green: '\x1b[32m%s\x1b[0m',
-    cyan: '\x1b[36m%s\x1b[0m',
-    yellow: '\x1b[33m%s\x1b[0m',
-    bgCyan : '\x1b[46m'
-}
 
 const rl = readLine.createInterface({
     input: process.stdin,
-    output: process.stdout
+    output: process.stdout,
 })
 
+const colors = {
+    warning : '\x1b[31m',
+    auth: '\x1b[1;37;44m%s\x1b[0m\xa0',
+    userMsg: '\x1b[2;30m%s\xa0\x1b[36m%s\xa0\x1b[0m%s',
+    myMsg: '\x1b[2;32m%s\xa0\xa0\x1b[32m',
+    info: '\x1b[36m%s\x1b[0m',
+}
+
+
 // ------------- Functions
+
+const getDate = () => {
+    const now = new Date()
+    return `[${now.toLocaleTimeString('fr-FR')}]`
+}
+
+const colorMsg = (data, color) => {
+    if (Array.isArray(data)) {
+        return util.format(colors[color], ...data)
+    }
+    return util.format(colors[color], data)
+}
+
 const rlQuestions = (question) => {
     return new Promise((resolve) => {
         const type = question.split(' ').pop()
-        rl.question(question + ': ', (answer) => {
+        
+        rl.question(question, (answer) => {
             if (answer !== '') resolve(answer)
             else {
-                console.log(color.red,'Your must enter a ' + type)
+                console.log(colors.warning,'Your must enter a ' + type)
                 rl.close()
             }
         })
@@ -32,13 +49,14 @@ const rlQuestions = (question) => {
 const login = async () => {
     let authData = []
 
-    const username = await rlQuestions('Enter a Username')
-    const password = await rlQuestions('Enter the Password')
+    const username = await rlQuestions(colorMsg('Enter a Username:', 'auth'))
+    const password = await rlQuestions(colorMsg('Enter the Password:', 'auth'))
 
     authData.push(username, password)
 
     return Promise.resolve(authData)
 }
+
 
 // ---------------
 
@@ -58,22 +76,24 @@ login()
             // ---- Read line
             rl.on('line', data => {
                 if (data === '/quit') {
-                    socket.write(`${username} has left the chat.`);
+                    socket.write(colorMsg(`${username} has left the chat.`, 'info'))
                     socket.end()
                 }
                 else {
-                    socket.write(username + ': ' + data)
+                    const user = `<${username}>`
+                    socket.write(colorMsg([getDate(), user, data], 'userMsg'))
                 }
             })
             
+            
             // ---- handle msg recieved from server
             socket.on('data', data => {
-                console.log(color.cyan, data)
+                console.log(colors.info, data)
             })
 
             // ---- Disconnection
             socket.on('end', () => {
-                console.log(color.cyan, 'Disconnected')
+                console.log(colors.info, 'Disconnected')
                 rl.close()
             })
 

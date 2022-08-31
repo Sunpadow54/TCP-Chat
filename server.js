@@ -1,4 +1,5 @@
 const net = require('net')
+const util = require('util')
 const server = net.createServer()
 
 const DEFAULT_PORT = 8080
@@ -6,9 +7,21 @@ let users = []
 
 const AUTH_USER_REGEX = /^LOGIN\/username=(?<name>.+)&password=(?<pwd>.+)$/
 
+const colors = {
+    warning : '\x1b[1;31m%s\x1b[0m',
+    chat: '\x1b[1;33m%s\x1b[36m'
+}
+
 // ------------- Functions
+const colorMsg = (data, color) => {
+    if (Array.isArray(data)) {
+        return util.format(colors[color], ...data)
+    }
+    return util.format(colors[color], data)
+}
+
 const sendError = (socket, msg) => {
-    socket.write(msg)
+    socket.write(colorMsg(msg, 'warning'))
     socket.end()
 }
 
@@ -22,7 +35,7 @@ const quitChat = (socket) => {
     const clientIndex = users.indexOf(client)
     users.splice(clientIndex, 1)
     // Print server msg
-    showMessage('left')
+    logMessage('left')
     // End client
     socket.end()
 }
@@ -55,18 +68,19 @@ const authUser = (client) => {
         // - Add User to Chat.
         client.username = username
         users.push(client)
-        showMessage('join')
+        logMessage('join')
 
         // - Send Msg to the Chat
-        broadcast(`${username} join the chat !`, client)
-        client.write(`Welcome ${username}!`)
+        const user = colorMsg(username, 'chat')
+        broadcast(`>>>> ${user} join the chat !`, client)
+        client.write(`>>>> Welcome ${user} !`)
 
         return
     })
 }
 
 // Show Number of connected users
-const showMessage = (action) => {
+const logMessage = (action) => {
     console.log(`A client has ${action} the chat.`)
     console.log('Users connected:', users.length)
 }
