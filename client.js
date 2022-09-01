@@ -10,15 +10,16 @@ const rl = readLine.createInterface({
 })
 
 const colors = {
-    warning : '\x1b[31m',
+    warning : '\x1b[1;31m%s\x1b[0m',
     auth: '\x1b[1;37;44m%s\x1b[0m\xa0',
     userMsg: '\x1b[2;30m%s\xa0\x1b[36m%s\xa0\x1b[0m%s',
     myMsg: '\x1b[2;32m%s\xa0\xa0\x1b[32m',
     info: '\x1b[36m%s\x1b[0m',
+    highlight: '\x1b[1;33m%s\x1b[36m'
 }
 
 
-// ------------- Functions
+// ------------------- Functions -------------------
 
 const getDate = () => {
     const now = new Date()
@@ -47,59 +48,65 @@ const rlQuestions = (question) => {
 }
 
 const login = async () => {
-    let authData = []
-
     const username = await rlQuestions(colorMsg('Enter a Username:', 'auth'))
     const password = await rlQuestions(colorMsg('Enter the Password:', 'auth'))
 
-    authData.push(username, password)
+    return new Promise((resolve) => {
+        // Create Socket
+        const socket = net.connect({
+            port: DEFAULT_PORT
+        })
+        
+        socket.on('connect', () => {
+            socket.write(`LOGIN/username=${username}&password=${password}`)
+        })
 
-    return Promise.resolve(authData)
+        socket.once('data', data => {
+            const user = colorMsg(username, 'highlight')
+
+            if (data.toString() === 'success') {
+                console.log(colorMsg(`>>>> Welcome ${user} !`, 'info'))
+                socket.write(colorMsg(`>>>> ${user} join the chat !`, 'info'))
+
+                resolve([socket, username])
+            }
+            if (data.toString() === 'Unauthorized') {
+                console.log(colorMsg(data.toString(), 'warning'))
+                socket.end()
+                rl.close()
+            }
+        })
+
+    })
 }
 
-
-// ---------------
+// ------------------- Connect -------------------
 
 login()
-    .then((authData) => {
-        const [username, password] = authData
+    .then(res => {
+        const [socket, username] = res
 
-        if (username && password) {
-            const socket = net.connect({
-                port: DEFAULT_PORT
-            })
+        
+        // ---- Read line
+        rl.on('line', data => {
+            if (data === '/quit') {
+                socket.write(colorMsg(`>>>> ${username} has left the chat.`, 'info'))
+                socket.setTimeout(1000)
+            }
+            else {
+                const user = `<${username}>`
+                socket.write(colorMsg([getDate(), user, data], 'userMsg'))
+            }
+        })
+        
+        // ---- Socket
+        socket.on('data', data => {
+                console.log(data.toString())
+        })
 
-            socket.on('connect', () => {
-                socket.write(`LOGIN/username=${username}&password=${password}`)
-            })
-
-            // ---- Read line
-            rl.on('line', data => {
-                if (data === '/quit') {
-                    socket.write(colorMsg(`${username} has left the chat.`, 'info'))
-                    socket.end()
-                }
-                else {
-                    const user = `<${username}>`
-                    socket.write(colorMsg([getDate(), user, data], 'userMsg'))
-                }
-            })
-            
-            
-            // ---- handle msg recieved from server
-            socket.on('data', data => {
-                console.log(colors.info, data)
-            })
-
-            // ---- Disconnection
-            socket.on('end', () => {
-                console.log(colors.info, 'Disconnected')
-                rl.close()
-            })
-
-            // ---- Errors
-            socket.on('error', (err) => {
-                console.log('error server: ', err)
-            })
-        }
+        socket.on('timeout', () => {
+            socket.write('/QUIT')
+            rl.close()
+            socket.destroy()
+        });
     })

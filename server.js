@@ -1,27 +1,16 @@
 const net = require('net')
-const util = require('util')
 const server = net.createServer()
 
 const DEFAULT_PORT = 8080
 let users = []
 
 const AUTH_USER_REGEX = /^LOGIN\/username=(?<name>.+)&password=(?<pwd>.+)$/
+const CMD_QUIT_REGEX = /^\/QUIT$/
 
-const colors = {
-    warning : '\x1b[1;31m%s\x1b[0m',
-    chat: '\x1b[1;33m%s\x1b[36m'
-}
-
-// ------------- Functions
-const colorMsg = (data, color) => {
-    if (Array.isArray(data)) {
-        return util.format(colors[color], ...data)
-    }
-    return util.format(colors[color], data)
-}
+// ------------------- Functions -------------------
 
 const sendError = (socket, msg) => {
-    socket.write(colorMsg(msg, 'warning'))
+    socket.write(msg)
     socket.end()
 }
 
@@ -32,10 +21,9 @@ const isUniqueUsername = (string) => {
 
 const quitChat = (socket) => {
     // Remove client from users array
-    const clientIndex = users.indexOf(client)
+    const clientIndex = users.indexOf(socket)
+    console.log('clientIndex', clientIndex)
     users.splice(clientIndex, 1)
-    // Print server msg
-    logMessage('left')
     // End client
     socket.end()
 }
@@ -64,16 +52,13 @@ const authUser = (client) => {
             return sendError(client, 'Unauthorized')
         }
 
-        // Success ! 
+        // Success !
+        client.write('success')
+
         // - Add User to Chat.
         client.username = username
         users.push(client)
         logMessage('join')
-
-        // - Send Msg to the Chat
-        const user = colorMsg(username, 'chat')
-        broadcast(`>>>> ${user} join the chat !`, client)
-        client.write(`>>>> Welcome ${user} !`)
 
         return
     })
@@ -86,6 +71,8 @@ const logMessage = (action) => {
 }
 
 
+// ------------------- Server -------------------
+
 // ------------- Server Error
 server.on('error', err => console.error(err.stack))
 
@@ -94,18 +81,21 @@ server.on('connection', (client) => {
     // ---- Check username and password
     authUser(client)
 
-    // ---- Data recieve
+    // ---- Data recieved
     client.on('data', data => {
-        // If request is to quit the chat
-        if (users.indexOf(client) !== -1) {
-            if (data === '/quit') {
+        if (users.indexOf(client) !== -1 && !AUTH_USER_REGEX.test(data)) {
+            // If request is to quit the chat
+            if (CMD_QUIT_REGEX.test(data)) {
                 quitChat(client)
             }
-            // If the data recieve is not a Login request
-            if (!AUTH_USER_REGEX.test(data)) {
+            else {
                 broadcast(data, client)
             }
         }
+    })
+
+    client.on('end', () => {
+        logMessage('left')
     })
 })
 
