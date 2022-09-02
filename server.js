@@ -6,8 +6,7 @@ const PASSWORD = 'pass' // need to be secured
 let users = []
 
 const AUTH_USER_REGEX = /^LOGIN\/username=(?<name>.+)&password=(?<pwd>.+)$/
-const CMD_QUIT_REGEX = /^\/QUIT$/
-const CMD_USERS_REGEX = /^\/users$/
+const COMMAND_REGEX = /^\/([a-z]+)$/
 
 // ------------------- Functions -------------------
 
@@ -85,6 +84,22 @@ const getUsers = (clientSender) => {
     return clientSender.write(str)
 }
 
+const handleUserCmd = (command, clientSender) => {
+    const cmd = command.toString().match(COMMAND_REGEX)[1]
+
+    switch (cmd) {
+        case 'quit':
+            quitChat(clientSender)
+            break;
+        case 'users':
+            getUsers(clientSender)
+            break;
+        default:
+            clientSender.write('Unknown command')
+            break;
+    }
+}
+
 // ------------------- Server -------------------
 
 // ------------- Server Error
@@ -98,13 +113,9 @@ server.on('connection', (client) => {
     // ---- Data recieved
     client.on('data', data => {
         if (users.indexOf(client) !== -1 && !AUTH_USER_REGEX.test(data)) {
-            // If request is to quit the chat
-            if (CMD_QUIT_REGEX.test(data)) {
-                quitChat(client)
-            }
-            if (CMD_USERS_REGEX.test(data)) {
-                console.log('searching');
-                getUsers(client)
+            // If request is a command
+            if (COMMAND_REGEX.exec(data)) {
+                handleUserCmd(data, client)
             }
             else {
                 broadcast(data, client)

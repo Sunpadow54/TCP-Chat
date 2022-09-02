@@ -23,7 +23,7 @@ const colors = {
 
 const ASK_USERNAME = 'Enter a Username:'
 const ASK_PASSWORD = 'Enter the Password:'
-
+const COMMAND_REGEX = /^\/[a-z]+$/
 
 // ------------------- Functions -------------------
 
@@ -113,22 +113,23 @@ login()
 
         // ---- Read line
         rl.on('line', data => {
-            if (data === '/quit') {
-                const user = colorMsg(username, 'highlight')
-                socket.write(colorMsg(`<<<< ${user} has left the chat.`, 'info'))
-                socket.setTimeout(1000)
+            if (COMMAND_REGEX.exec(data)) {
+                if (data === '/quit') {
+                    const user = colorMsg(username, 'highlight')
+                    socket.write(colorMsg(`<<<< ${user} has left the chat.`, 'info'))
+                    socket.setTimeout(1000)
+                    return
+                }
+                socket.write(data)
+                return
             }
-            if (data === '/users') {
-                socket.write('/users')
-            }
-            else {
-                // Send to server
-                const user = `<${username}>`
-                socket.write(colorMsg([getDate(), user, data], 'userMsg'))
-                // clear line and rewrite the formatted data
-                readLine.moveCursor(process.stdout, 0, -1)
-                console.log(getDate() + data)
-            }
+
+            // Send to server
+            const user = `<${username}>`
+            socket.write(colorMsg([getDate(), user, data], 'userMsg'))
+            // clear line and rewrite the formatted data
+            readLine.moveCursor(process.stdout, 0, -1)
+            console.log(getDate() + data)
         })
 
         // ---- Socket
@@ -145,7 +146,7 @@ login()
         })
 
         socket.on('timeout', () => {
-            socket.write('/QUIT')
+            socket.write('/quit')
             rl.close()
             socket.destroy()
         })
