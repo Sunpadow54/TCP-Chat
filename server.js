@@ -2,6 +2,7 @@ const net = require('net')
 const server = net.createServer()
 
 const DEFAULT_PORT = 8080
+const PASSWORD = 'pass' // need to be secured
 let users = []
 
 const AUTH_USER_REGEX = /^LOGIN\/username=(?<name>.+)&password=(?<pwd>.+)$/
@@ -48,7 +49,7 @@ const authUser = (client) => {
             return sendError(client, 'Unauthorized')
         }
 
-        if (password !== 'pass') {
+        if (password !== PASSWORD) {
             return sendError(client, 'Unauthorized')
         }
 

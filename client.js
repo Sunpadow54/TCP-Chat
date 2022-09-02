@@ -21,9 +21,11 @@ const colors = {
     date: '\x1b[90m%s\xa0\x1b[0m',
 }
 
+const ASK_USERNAME = 'Enter a Username:'
+const ASK_PASSWORD = 'Enter the Password:'
+
 
 // ------------------- Functions -------------------
-
 
 const colorMsg = (data, color) => {
     if (Array.isArray(data)) {
@@ -32,15 +34,30 @@ const colorMsg = (data, color) => {
     return util.format(colors[color], data)
 }
 
+const hidePassword = (password) => {
+    // Move Cursor to start of password printed.
+    const x = ASK_PASSWORD.length + 1
+    readLine.moveCursor(process.stdout, x, -1)
+    // Replace * instead of the password.
+    let result = ''
+    for (const char of password) {
+        result += '*'
+    }
+    console.log(result)
+    // Remove readline history.
+    rl.history = rl.history.slice(1)
+}
+
 const getDate = () => {
     const now = new Date()
     return colorMsg(`[${now.toLocaleTimeString('fr-FR')}]`, 'date')
 }
 
-const rlQuestions = (question) => {
+const getResponse = (question) => {
     return new Promise((resolve) => {
-        const type = question.split(' ').pop()
-        
+        let type = question.split(' ').slice(-1)
+        type = type.toString().replace(':', '.')
+
         rl.question(question, (answer) => {
             if (answer !== '') resolve(answer)
             else {
@@ -52,8 +69,10 @@ const rlQuestions = (question) => {
 }
 
 const login = async () => {
-    const username = await rlQuestions(colorMsg('Enter a Username:', 'auth'))
-    const password = await rlQuestions(colorMsg('Enter the Password:', 'auth'))
+    const username = await getResponse(colorMsg(ASK_USERNAME, 'auth'))
+    const password = await getResponse(colorMsg(ASK_PASSWORD, 'auth'))
+
+    hidePassword(password)
 
     return new Promise((resolve) => {
         // Create Socket
@@ -94,9 +113,9 @@ login()
 
         // ---- Read line
         rl.on('line', data => {
-
             if (data === '/quit') {
-                socket.write(colorMsg(`>>>> ${username} has left the chat.`, 'info'))
+                const user = colorMsg(username, 'highlight')
+                socket.write(colorMsg(`<<<< ${user} has left the chat.`, 'info'))
                 socket.setTimeout(1000)
             }
             else {
