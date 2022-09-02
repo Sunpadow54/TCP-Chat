@@ -118,6 +118,9 @@ login()
                 socket.write(colorMsg(`<<<< ${user} has left the chat.`, 'info'))
                 socket.setTimeout(1000)
             }
+            if (data === '/users') {
+                socket.write('/users')
+            }
             else {
                 // Send to server
                 const user = `<${username}>`
@@ -136,7 +139,7 @@ login()
                 console.log(data.toString())
                 rl.write(keepText)
             } else {
-                console.log(data.toString())    
+                console.log(colorMsg(data.toString(), 'info'))    
             }
                 
         })

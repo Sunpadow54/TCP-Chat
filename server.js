@@ -7,6 +7,7 @@ let users = []
 
 const AUTH_USER_REGEX = /^LOGIN\/username=(?<name>.+)&password=(?<pwd>.+)$/
 const CMD_QUIT_REGEX = /^\/QUIT$/
+const CMD_USERS_REGEX = /^\/users$/
 
 // ------------------- Functions -------------------
 
@@ -71,6 +72,18 @@ const logMessage = (action) => {
     console.log('Users connected:', users.length)
 }
 
+const getUsers = (clientSender) => {
+    if (users.length === 1) return clientSender.write('>>>> You are currently alone in the chat ...')
+
+    let str = `>>>> There is ${users.length} people in the chat !\r\n\r>>>>`
+    users.forEach(user => {
+        if (user !== clientSender) {
+            str += `[${user.username}] `
+        }
+    })
+
+    return clientSender.write(str)
+}
 
 // ------------------- Server -------------------
 
@@ -88,6 +101,10 @@ server.on('connection', (client) => {
             // If request is to quit the chat
             if (CMD_QUIT_REGEX.test(data)) {
                 quitChat(client)
+            }
+            if (CMD_USERS_REGEX.test(data)) {
+                console.log('searching');
+                getUsers(client)
             }
             else {
                 broadcast(data, client)
