@@ -59,11 +59,11 @@ const getResponse = (question) => {
         type = type.toString().replace(':', '.')
 
         rl.question(question, (answer) => {
-            if (answer !== '') resolve(answer)
-            else {
-                console.log(colors.warning,'Your must enter a ' + type)
-                rl.close()
-            }
+            if (answer !== '') return resolve(answer)
+
+            console.log(colors.warning,'Your must enter a ' + type)
+            rl.close()
+            return
         })
     })
 }
@@ -84,10 +84,10 @@ const login = async () => {
             socket.write(`LOGIN/username=${username}&password=${password}`)
         })
 
+        // Wait response
         socket.once('data', data => {
-            const user = colorMsg(username, 'highlight')
-
             if (data.toString() === 'success') {
+                const user = colorMsg(username, 'highlight')
                 console.log(colorMsg(`>>>> Welcome ${user} !`, 'info'))
                 socket.write(colorMsg(`>>>> ${user} join the chat !`, 'info'))
 
@@ -99,7 +99,6 @@ const login = async () => {
                 rl.close()
             }
         })
-
     })
 }
 
@@ -113,18 +112,17 @@ login()
 
         // ---- Read line
         rl.on('line', data => {
+            // -- Commands ?
             if (COMMAND_REGEX.exec(data)) {
-                if (data === '/quit') {
-                    const user = colorMsg(username, 'highlight')
-                    socket.write(colorMsg(`<<<< ${user} has left the chat.`, 'info'))
-                    socket.setTimeout(1000)
-                    return
-                }
-                socket.write(data)
+                if (data !== '/quit') return socket.write(data)
+
+                const user = colorMsg(username, 'highlight')
+                socket.write(colorMsg(`<<<< ${user} has left the chat.`, 'info'))
+                socket.setTimeout(1000)
                 return
             }
 
-            // Send to server
+            // -- Message ?
             const user = `<${username}>`
             socket.write(colorMsg([getDate(), user, data], 'userMsg'))
             // clear line and rewrite the formatted data
@@ -132,25 +130,25 @@ login()
             console.log(getDate() + data)
         })
 
-        // ---- Socket
+        // ---- Data Recieved
         socket.on('data', data => {
-            if (isTyping) {
-                let keepText = rl.line
-                rl.write(null, {ctrl: true, name: 'u'})
-                console.log(data.toString())
-                rl.write(keepText)
-            } else {
-                console.log(colorMsg(data.toString(), 'info'))    
-            }
+            if (!isTyping) return console.log(colorMsg(data.toString(), 'info'))
+
+            let keepText = rl.line
+            rl.write(null, {ctrl: true, name: 'u'})
+            console.log(data.toString())
+            rl.write(keepText)
                 
         })
 
+        // ---- Data timeout (quit)
         socket.on('timeout', () => {
             socket.write('/quit')
             rl.close()
             socket.destroy()
         })
 
+        // ---- Typing
         process.stdin.on('keypress', (str, key) => {
             isTyping = true
             if (key.name === 'return') {
