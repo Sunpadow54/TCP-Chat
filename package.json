@@ -1,13 +1,14 @@
 {
-  "name": "chattcp",
+  "name": "simple-node-chat",
   "version": "1.0.0",
-  "description": "",
+  "description": "a simple terminal Tcp chat",
   "main": "client.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "nodemon server.js"
+    "server": "nodemon server.js",
+    "client": "node client.js"
   },
-  "author": "",
+  "author": "Sunpadown54",
   "license": "ISC",
   "devDependencies": {
     "nodemon": "^2.0.19"
