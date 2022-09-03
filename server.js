@@ -6,7 +6,8 @@ const PASSWORD = 'pass' // need to be secured
 let users = []
 
 const AUTH_USER_REGEX = /^LOGIN\/username=(?<name>.+)&password=(?<pwd>.+)$/
-const COMMAND_REGEX = /^\/([a-z]+)$/
+const COMMAND_REGEX = /^\/([a-z]+)\s?(\S+)?\s?(.+)?$/
+
 
 // ------------------- Functions -------------------
 
@@ -15,26 +16,15 @@ const sendError = (socket, msg) => {
     socket.end()
 }
 
+const logMessage = (action) => {
+    console.log(`A client has ${action} the chat.`)
+    console.log('Users connected:', users.length)
+}
+
+// ---- Auth
 const isUniqueUsername = (string) => {
     const result = users.some(user => user.username === string)
     return !result
-}
-
-const quitChat = (socket) => {
-    // Remove client from users array
-    const clientIndex = users.indexOf(socket)
-    console.log('clientIndex', clientIndex)
-    users.splice(clientIndex, 1)
-    // End client
-    socket.end()
-}
-
-const broadcast = (msg, clientSender) => {
-    users.forEach(client => {
-        if (client !== clientSender) {
-            client.write(msg)
-        }
-    })
 }
 
 const authUser = (client) => {
@@ -43,7 +33,7 @@ const authUser = (client) => {
             return sendError(client, 'Unauthorized')
         }
 
-        const [wholeMatch, username, password] = AUTH_USER_REGEX.exec(authData)
+        const [username, password] = AUTH_USER_REGEX.exec(authData).slice(1)
 
         if (!isUniqueUsername(username)) {
             return sendError(client, 'Unauthorized')
@@ -65,10 +55,22 @@ const authUser = (client) => {
     })
 }
 
-// Show Number of connected users
-const logMessage = (action) => {
-    console.log(`A client has ${action} the chat.`)
-    console.log('Users connected:', users.length)
+// ---- Commands
+const quitChat = (socket) => {
+    // Remove client from users array
+    const clientIndex = users.indexOf(socket)
+    console.log('clientIndex', clientIndex)
+    users.splice(clientIndex, 1)
+    // End client
+    socket.end()
+}
+
+const broadcast = (msg, clientSender) => {
+    users.forEach(client => {
+        if (client !== clientSender) {
+            client.write(msg)
+        }
+    })
 }
 
 const getUsers = (clientSender) => {
@@ -84,19 +86,29 @@ const getUsers = (clientSender) => {
     return clientSender.write(str)
 }
 
+const sendPrivateMsg = (addressee, msg, clientSender) => {
+    const user = users.find(user => user.username === addressee)
+    if (!user) return clientSender.write('This user is not in the chat.')
+    user.write(msg)
+    return
+}
+
 const handleUserCmd = (command, clientSender) => {
-    const cmd = command.toString().match(COMMAND_REGEX)[1]
+    const [cmd, user, msg]  = command.toString().match(COMMAND_REGEX).slice(1)
 
     switch (cmd) {
         case 'quit':
             quitChat(clientSender)
-            break;
+            break
         case 'users':
             getUsers(clientSender)
-            break;
+            break
+        case 'msg':
+            sendPrivateMsg(user, msg, clientSender)
+            break
         default:
             clientSender.write('Unknown command')
-            break;
+            break
     }
 }
 

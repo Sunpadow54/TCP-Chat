@@ -16,6 +16,7 @@ const colors = {
     auth: '\x1b[1;37;44m%s\x1b[0m\xa0',
     userMsg: '\x1b[%s\x1b[36m%s\xa0\x1b[0m%s',
     myMsg: '\x1b[%s\x1b[32m%s\xa0\x1b[0m',
+    whisper: '\x1b[%s\x1b[35m%s\xa0\x1b[0m%s',
     info: '\x1b[36m%s\x1b[0m',
     highlight: '\x1b[1;33m%s\x1b[36m',
     date: '\x1b[90m%s\xa0\x1b[0m',
@@ -23,7 +24,7 @@ const colors = {
 
 const ASK_USERNAME = 'Enter a Username:'
 const ASK_PASSWORD = 'Enter the Password:'
-const COMMAND_REGEX = /^\/[a-z]+$/
+const COMMAND_REGEX = /^\/.+$/
 
 // ------------------- Functions -------------------
 
@@ -114,12 +115,23 @@ login()
         rl.on('line', data => {
             // -- Commands ?
             if (COMMAND_REGEX.exec(data)) {
-                if (data !== '/quit') return socket.write(data)
+                if (data === '/quit') {
+                    const user = colorMsg(username, 'highlight')
+                    socket.write(colorMsg(`<<<< ${user} has left the chat.`, 'info'))
+                    socket.setTimeout(1000)
+                    return
+                } 
+                if (data.startsWith('/msg')) {
+                    const [ msg ] = data.toString().match(/\s\S*\s(.*)/).slice(1)
+                    const dataFormatted = colorMsg([getDate(), `<${username} whisper>`, msg], 'whisper')
+                    const newData = data.replace(msg, dataFormatted);
+                    
+                    socket.write(newData)
+                    
+                    return
+                }
 
-                const user = colorMsg(username, 'highlight')
-                socket.write(colorMsg(`<<<< ${user} has left the chat.`, 'info'))
-                socket.setTimeout(1000)
-                return
+                return socket.write(data)
             }
 
             // -- Message ?
