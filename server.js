@@ -47,7 +47,7 @@ const authUser = (client) => {
         client.write('success')
 
         // - Add User to Chat.
-        client.username = username
+        client.username = username.replace(/\s/g, '-')
         users.push(client)
         logMessage('join')
 
@@ -76,7 +76,7 @@ const broadcast = (msg, clientSender) => {
 const getUsers = (clientSender) => {
     if (users.length === 1) return clientSender.write('>>>> You are currently alone in the chat ...')
 
-    let str = `>>>> There is ${users.length} people in the chat !\r\n\r>>>>`
+    let str = `>>>> There is ${users.length} people in the chat !\r\n\r>>>> `
     users.forEach(user => {
         if (user !== clientSender) {
             str += `[${user.username}] `

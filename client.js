@@ -70,10 +70,12 @@ const getResponse = (question) => {
 }
 
 const login = async () => {
-    const username = await getResponse(colorMsg(ASK_USERNAME, 'auth'))
+    let username = await getResponse(colorMsg(ASK_USERNAME, 'auth'))
     const password = await getResponse(colorMsg(ASK_PASSWORD, 'auth'))
 
+    username = username.replace(/\s/g, '-') // remove space
     hidePassword(password)
+
 
     return new Promise((resolve) => {
         // Create Socket
@@ -125,7 +127,7 @@ login()
                     const [ msg ] = data.toString().match(/\s\S*\s(.*)/).slice(1)
                     const dataFormatted = colorMsg([getDate(), `<${username} whisper>`, msg], 'whisper')
                     const newData = data.replace(msg, dataFormatted);
-                    
+
                     socket.write(newData)
                     
                     return
