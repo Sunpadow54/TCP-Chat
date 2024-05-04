@@ -39,4 +39,4 @@ Type commands:
 
 ## Author
 
-Sunpadown - elsa dessarps - 2022
+Sunpadown - 2022
